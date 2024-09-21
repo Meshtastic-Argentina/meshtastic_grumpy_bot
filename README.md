@@ -16,7 +16,7 @@ The rest of the time the bot will answer with a welcome message based on the tim
 
 ```sh
 git clone https://github.com/Meshtastic-Argentina/meshtastic_grumpy_bot.git
-cd mesh_grumpy_bot
+cd meshtastic_grumpy_bot
 pip install -r requirements
 ./bot <device>
 ```
