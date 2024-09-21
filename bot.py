@@ -13,6 +13,10 @@ from os import path
 
 # Changelog
 #
+# v1.7:
+# * Added dev info for connection events.
+# * Fixed type in README.md.
+#
 # v1.6:
 # * Added other apps to output.
 # * Enhanced output format and alignment.
@@ -46,7 +50,7 @@ from os import path
 #
 
 __description__ = "BairesMesh grumpy chat BOT"
-__version__ = 1.6
+__version__ = 1.7
 
 from phrases import *
 try:
@@ -68,6 +72,8 @@ try:
 
     from colorama import Fore
     from colorama import Style
+
+    #from IPython import embed
 except ImportError as error:
     print(f"Error : {error}")
     print("\nMake sure to run: pip install -r requirements\n")
@@ -437,12 +443,13 @@ def onReceive(packet, interface):
 def idToHex(nodeId): 
     return '!' + hex(nodeId)[2:]
 
-def onConnection(interface, topic=pub.AUTO_TOPIC):  # pylint: disable=W0613
-    """Callback invoked when we connect/disconnect from a radio"""
-    print(f"Connection changed: {topic.getName()}")
+def onConnection(*args, **kwargs):
+    print("Positional arguments:", args)
+    print("Keyword arguments:", kwargs)
 
 def subscribe():
     """Subscribe to the topics the user probably wants to see, prints output to stdout"""
+    pub.subscribe(onConnection, "meshtastic.connection")
     pub.subscribe(onReceive, "meshtastic.receive")
 
 def print_nodes(client):
@@ -451,11 +458,12 @@ def print_nodes(client):
         print(f"#{i}, Nodo ID: {node_id}, Nombre: {node['user']['longName']},")
 
 def start(client):
-    """..."""
+    """Initiate the connection loop and stay here until disconnected."""
     #print_nodes(client)
     subscribe()
 
     while True:
+        #embed()
         time.sleep(3)
         if client.isConnected == False:
             logging.critical("!!!! Client disconnected !!!!")
