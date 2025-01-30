@@ -14,8 +14,10 @@ from os import path
 # Changelog
 #
 # v1.7:
-# * Added dev info for connection events.
-# * Fixed type in README.md.
+# * Removed debugging messages.
+# * Fixed non-existing short-name lookup.
+# * Fixed README.
+# * Other changes.
 #
 # v1.6:
 # * Added other apps to output.
@@ -73,7 +75,7 @@ try:
     from colorama import Fore
     from colorama import Style
 
-    #from IPython import embed
+    from IPython import embed
 except ImportError as error:
     print(f"Error : {error}")
     print("\nMake sure to run: pip install -r requirements\n")
@@ -124,7 +126,10 @@ def handle_position_packet(packet, interface):
 def handle_message_packet(packet, interface):
     """Handle incoming MESSAGE packet."""
     from_id = packet["fromId"]
-    frm = interface.nodes[from_id]["user"]["shortName"]
+    try:
+        frm = interface.nodes[from_id]["user"]["shortName"]
+    except Error as err:
+        frm = "UNK"
 
     #print("--->%r<---" % packet)
     decoded = packet.get("decoded")
@@ -151,7 +156,7 @@ def handle_message_packet(packet, interface):
 
             elif word_in_string(info_keywords, msg[1 : ]):
                 # Reply to every received message with some stats
-                #logging.error(f"--->{packet}<---")
+                #logging.info(f"--->{packet}<---")
                 rx_snr = packet.get("rxSnr", "???")
                 rx_rssi = packet.get("rxRssi", "???")
                 hop_start = packet.get("hopStart", "???")
@@ -195,10 +200,6 @@ def handle_message_packet(packet, interface):
         logging.info(f"\t{Fore.GREEN}Reply : {Style.RESET_ALL}{reply}")
         r = interface.sendText(reply.format(frm=frm), channelIndex=ch_idx)
         #print(f"res {r}")
-
-#switch_message = {
-#        "TEXT_MESSAGE_APP" : handle_message_packet,
-#}
 
 def onReceive(packet, interface):
     """Callback invoked when a packet arrives"""
@@ -252,13 +253,13 @@ def onReceive(packet, interface):
             handle_message_packet(packet, interface)
 
         elif port == "RANGE_TEST_APP":
-            #logging.error(f"---->{decoded}<---")
+            #logging.info(f"---->{decoded}<---")
             mode = "Range Test"
             logging.info(f"{Fore.CYAN}{Style.BRIGHT}{mode:<15} {peers_data:<45}")
             pass
 
         elif port == "DETECTION_SENSOR_APP":
-            logging.error(f"---->{decoded}<---")
+            logging.info(f"---->{decoded}<---")
             mode = "Detection Sensor"
             logging.info(f"{Fore.CYAN}{Style.BRIGHT}{mode:<15} {peers_data:<45}")
             pass
@@ -275,7 +276,7 @@ def onReceive(packet, interface):
                          f"Altitude: {altitude}")
 
         elif port == "NODEINFO_APP":
-            #logging.error(f"---->{decoded}<---")
+            #logging.info(f"---->{decoded}<---")
             user = decoded.get("user", None)
             mode = "Node Info"
             if user is None:
@@ -301,7 +302,7 @@ def onReceive(packet, interface):
             mode = "Admin"
             logging.info(f"{Fore.CYAN}{Style.BRIGHT}{mode:<15} {peers_data:<45}")
         elif port == "ROUTING_APP":
-            #logging.error(f"---->{decoded}<---")
+            #logging.info(f"---->{decoded}<---")
             mode = "Routing"
             logging.info(f"{Fore.CYAN}{Style.BRIGHT}{mode:<15} {peers_data:<45}")
         elif port == "TELEMETRY_APP":
@@ -345,11 +346,11 @@ def onReceive(packet, interface):
                              )
 
         elif port == "REMOTE_HARDWARE_APP":
-            logging.error(f"---->{decoded}<---")
+            logging.info(f"---->{decoded}<---")
             mode = "Remote HW"
             logging.info(f"{Fore.CYAN}{Style.BRIGHT}{mode:<15} {peers_data:<45}")
         elif port == "SIMULATOR_APP":
-            logging.error(f"---->{decoded}<---")
+            logging.info(f"---->{decoded}<---")
             mode = "Simulator"
             logging.info(f"{Fore.CYAN}{Style.BRIGHT}{mode:<15} {peers_data:<45}")
         elif port == "TRACEROUTE_APP":
@@ -367,11 +368,11 @@ def onReceive(packet, interface):
             #name: "Aeroparque"
             #description: "prueba waypoints"
             #}}<---
-            #logging.error(f"---->{decoded}<---")
+            #logging.info(f"---->{decoded}<---")
             waypoint = decoded.get('waypoint', None)
             if waypoint == None:
-                logging.error("No waypoint information available.")
-                logging.error(f"---->{decoded}<---")
+                logging.info("No waypoint information available.")
+                #logging.info(f"---->{decoded}<---")
                 return
 
             latitude = waypoint.get('latitude_i', "???")
@@ -384,7 +385,7 @@ def onReceive(packet, interface):
                     f"Latitude: {latitude}, Longitude: {longitude}, "
                     )
         elif port == "PAXCOUNTER_APP":
-            #logging.error(f"---->{decoded}<---")
+            #logging.info(f"---->{decoded}<---")
             mode = "Paxcounter"
             message = paxcount_pb2.Paxcount()
             payload_bytes = packet['decoded'].get('payload', b'')
@@ -397,10 +398,10 @@ def onReceive(packet, interface):
                     f"    BLE : ble "
                     f"    Uptime : uptime")
         elif port == "STORE_FORWARD_APP":
-            logging.error(f"---->{decoded}<---")
+            logging.info(f"---->{decoded}<---")
             pass
         elif port == "NEIGHBORINFO_APP":
-            #logging.error(f"---->{decoded}<---")
+            #logging.info(f"---->{decoded}<---")
             mode = "Neighbor"
             message = mesh_pb2.NeighborInfo()
             payload_bytes = packet['decoded'].get('payload', b'')
@@ -414,7 +415,7 @@ def onReceive(packet, interface):
                 logging.info(f"    Neighbor ID: {neighbor.node_id} / {idToHex(neighbor.node_id)} "
                     f"SNR: {neighbor.snr}")
         elif port == "MAP_REPORT_APP":
-            logging.error(f"---->{decoded}<---")
+            logging.info(f"---->{decoded}<---")
             pass
 
         if 'payload_bytes' in decoded:
@@ -431,25 +432,46 @@ def onReceive(packet, interface):
         #    logging.info(f"\tUnknown packet from {from_short_name} to {to_short_name}")
 
     except KeyError as ex:
-        logging.error(f"Error {ex}")
+        logging.error(f"Key Error {ex}")
         traceback_str = traceback.format_exc()
         logging.error(f"Traceback :\n{traceback_str}")
 
     except TypeError as ex:
-        logging.error(f"Error {ex}")
+        logging.error(f"Type Error {ex}")
+        traceback_str = traceback.format_exc()
+        logging.error(f"Traceback :\n{traceback_str}")
+
+    except OSError as ex:
+        logging.error(f"OS Error {ex}")
+        traceback_str = traceback.format_exc()
+        logging.error(f"Traceback :\n{traceback_str}")
+
+    except Exception as ex:
+        logging.error(f"General Exception Error {ex}")
         traceback_str = traceback.format_exc()
         logging.error(f"Traceback :\n{traceback_str}")
 
 def idToHex(nodeId): 
     return '!' + hex(nodeId)[2:]
 
-def onConnection(*args, **kwargs):
-    print("Positional arguments:", args)
-    print("Keyword arguments:", kwargs)
+def onConnection(interface, topic=pub.AUTO_TOPIC):
+    #print("[Connect] Positional arguments:", args)
+    #print("[Connect] Keyword arguments:", kwargs)
+    print("iface = %r" % interface)
+    print("info = %s"  % interface.myInfo)
+    print("topic = %r" % topic)
+    #embed()
+
+
+def onDisconnection(*args, **kwargs):
+    print("[Disconnect] Positional arguments:", args)
+    print("[Disconnect] Keyword arguments:", kwargs)
+    embed()
 
 def subscribe():
     """Subscribe to the topics the user probably wants to see, prints output to stdout"""
-    pub.subscribe(onConnection, "meshtastic.connection")
+    pub.subscribe(onConnection, "meshtastic.connection.established")
+    pub.subscribe(onDisconnection, "meshtastic.connection.lost")
     pub.subscribe(onReceive, "meshtastic.receive")
 
 def print_nodes(client):
@@ -463,11 +485,10 @@ def start(client):
     subscribe()
 
     while True:
-        #embed()
         time.sleep(3)
         if client.isConnected == False:
             logging.critical("!!!! Client disconnected !!!!")
-            logging.error("--->%r<---" % client)
+            logging.error(f"--->Client : {client}<---")
             break
 
 def contains_ip(string):
